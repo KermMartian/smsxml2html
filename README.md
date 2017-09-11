@@ -10,8 +10,8 @@ MMS images in these backups and produces picture files you can view, edit, and o
 
 Usage
 -----
-    python smsxml2html.py -o <output_dir> -n <user_carrier_number> <input file> [<input file> ...]
+    python smsxml2html.py -o <output_dir> -n <user_carrier_number> <input_file> [<input_file> ...]
 
   * <output_dir>: New directory into which to place HTML files and images
-  * <user_carrier_number>: The carrier number of the SMS backups' owner, in 1NNNXXXYYYY format
-  * <input file>: One or more XML backup files produced by SMS Backup and Restore.
+  * <user_carrier_number>: The carrier number of the SMS backups' owner, in `1NNNXXXYYYY` format
+  * <input_file>: One or more XML backup files produced by SMS Backup and Restore.
