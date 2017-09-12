@@ -79,13 +79,19 @@ class MMSMsg(SMSMsg):
 				print("Failed to decode base64 for image %s" % (name))
 				return
 		self.images.append(name)
+
+def parseCarrierNumber(number):
+	number = re.sub('[^0-9]', '', number)
+	if len(number) == 10:
+		number = '1' + number
+	return number
 	
 def parseConversations(root, conversations, users, base_path, carrier_number):
 	messages = 0
 	for child in root:
 		messages += parseConversations(child, conversations, users, base_path, carrier_number)
 		if child.tag == 'sms':
-			address = child.attrib['address']
+			address = parseCarrierNumber(child.attrib['address'])
 			date    = int(child.attrib['date'])		# Epoch timestamp
 			type    = child.attrib['type']			# 2 = outgoing, 1 = incoming
 			name    = child.attrib['contact_name']
@@ -120,8 +126,9 @@ def parseConversations(root, conversations, users, base_path, carrier_number):
 				elif mms_child.tag == 'addrs':
 					for addr_child in mms_child:
 						if addr_child.tag == 'addr':
-							if carrier_number not in addr_child.attrib['address']:
-								addresses[addr_child.attrib['address']] = addr_child.attrib['type']
+							parsed_child_address = parseCarrierNumber(addr_child.attrib['address'])
+							if carrier_number not in parsed_child_address:
+								addresses[parsed_child_address] = parsed_child_address
 				for address, type in addresses.iteritems():
 					save_msg.address = address
 					save_msg.type = type
@@ -204,6 +211,7 @@ def main():
 	parser.add_argument('-n', '--number', type=str, required=True, \
 	                    help='User\'s carrier number')
 	args = parser.parse_args()
+	carrier_number = parseCarrierNumber(args.number)
 	
 	messages = 0
 	conversations = {}
@@ -221,10 +229,10 @@ def main():
 		except OSError:
 			pass					# Already exists
 			print("Parsing conversations from %s" % (input))
-		messages += parseConversations(root, conversations, users, args.output, args.number)
+		messages += parseConversations(root, conversations, users, args.output, carrier_number)
 		
 	print("Parsed %d messages in %d conversations with %d known user names" % (messages, len(conversations), len(users)))
-	files = dumpConversations(args.output, conversations, args.number)
+	files = dumpConversations(args.output, conversations, carrier_number)
 	print("Dumped messages to %d conversation HTML files" % (files))
 	
 	sys.exit(0)
