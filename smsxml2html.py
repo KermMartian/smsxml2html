@@ -128,7 +128,7 @@ def parseConversations(root, conversations, users, base_path, carrier_number):
 						if addr_child.tag == 'addr':
 							parsed_child_address = parseCarrierNumber(addr_child.attrib['address'])
 							if carrier_number not in parsed_child_address:
-								addresses[parsed_child_address] = parsed_child_address
+								addresses[parsed_child_address] = addr_child.attrib['type']
 				for address, type in addresses.iteritems():
 					save_msg.address = address
 					save_msg.type = type
@@ -205,11 +205,11 @@ def main():
 	# parse options and get results
 	parser = argparse.ArgumentParser(description='Turns SMS Backup and Restore XML into HTML conversations with images')
 	parser.add_argument('input', metavar='input', nargs='+', type=str, \
-	                    help='Input XML file')
+				help='Input XML file')
 	parser.add_argument('-o', '--output', type=str, required=True, \
-	                    help='Output directory')
+				help='Output directory')
 	parser.add_argument('-n', '--number', type=str, required=True, \
-	                    help='User\'s carrier number')
+				help='User\'s carrier number')
 	args = parser.parse_args()
 	carrier_number = parseCarrierNumber(args.number)
 	
