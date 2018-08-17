@@ -10,6 +10,7 @@ import argparse
 import base64
 import re, string
 import time, datetime
+import locale
 
 STYLESHEET_TEMPLATE = """
 .msg_date {
@@ -48,15 +49,18 @@ STYLESHEET_TEMPLATE = """
 """
 
 class SMSMsg:
-	def __init__(self, timestamp, text, type, extra):
+	def __init__(self, timestamp, text, type_, extra):
 		self.timestamp = timestamp
-		self.text = text
-		self.type = type
+		if isinstance(text, str) :
+			self.text = text.decode('utf8')
+		else :
+			self.text = text
+		self.type_ = type_
 		self.extra = extra
 		
 class MMSMsg(SMSMsg):
-	def __init__(self, timestamp = 0, text = "", type = 1, extra = {}):
-		SMSMsg.__init__(self, timestamp, text, type, extra)
+	def __init__(self, timestamp = 0, text = "", type_ = 1, extra = {}):
+		SMSMsg.__init__(self, timestamp, text, type_, extra)
 		self.images = []
 		
 	def addImage(self, base_path, timestamp, name, mime, data):
@@ -93,11 +97,11 @@ def parseConversations(root, conversations, users, base_path, carrier_number):
 		if child.tag == 'sms':
 			address = parseCarrierNumber(child.attrib['address'])
 			date    = int(child.attrib['date'])		# Epoch timestamp
-			type    = child.attrib['type']			# 2 = outgoing, 1 = incoming
+			type_   = child.attrib['type']			# 2 = outgoing, 1 = incoming
 			name    = child.attrib['contact_name']
 			body    = child.attrib['body']
 			
-			save_msg = SMSMsg(date, body, type, {})
+			save_msg = SMSMsg(date, body, type_, {})
 			try:
 				conversations[address][date] = save_msg
 			except KeyError:
@@ -129,9 +133,9 @@ def parseConversations(root, conversations, users, base_path, carrier_number):
 							parsed_child_address = parseCarrierNumber(addr_child.attrib['address'])
 							if carrier_number not in parsed_child_address:
 								addresses[parsed_child_address] = addr_child.attrib['type']
-				for address, type in addresses.iteritems():
+				for address, type_ in addresses.iteritems():
 					save_msg.address = address
-					save_msg.type = type
+					save_msg.type_ = type_
 					save_msg.timestamp = date
 					try:
 						conversations[address][date] = save_msg
@@ -152,7 +156,7 @@ def dumpConversations(base_path, conversations, carrier_number):
 
 		with open(output_path, 'w') as f:
 		
-			f.write('<html><head><link rel="stylesheet" type="text/css" href="stylesheet.css" /></head><body>' + "\n")
+			f.write('<html><head><meta charset="UTF-8"><link rel="stylesheet" type="text/css" href="stylesheet.css" /></head><body>' + "\n")
 
 			# Generate the TOC
 			prev_month_year = ""
@@ -161,7 +165,7 @@ def dumpConversations(base_path, conversations, carrier_number):
 			for date in sorted(conversation.keys()):
 				msg = conversation[date]
 				dt = datetime.datetime.utcfromtimestamp(msg.timestamp / 1000)
-				month_year = dt.strftime('%B %Y')
+				month_year = dt.strftime('%B %Y').decode(locale.getpreferredencoding())
 				if month_year != prev_month_year:
 					month_year_short = dt.strftime('%y%m')
 					months.append(month_year)
@@ -171,7 +175,7 @@ def dumpConversations(base_path, conversations, carrier_number):
 			# Generate the TOC
 			f.write('<div class="toc"><ul>')
 			for month_year in months:
-				f.write('<li><a href="#%s">%s</a>' % (month_amap[month_year], month_year))
+				f.write('<li><a href="#%s">%s</a>' % (month_amap[month_year], month_year.encode('utf8')))
 			f.write('</ul></div>')
 
 			# Generate the body
@@ -179,15 +183,15 @@ def dumpConversations(base_path, conversations, carrier_number):
 			for date in sorted(conversation.keys()):
 				msg = conversation[date]
 				dt = datetime.datetime.utcfromtimestamp(msg.timestamp / 1000)
-				month_year = dt.strftime('%B %Y')
+				month_year = dt.strftime('%B %Y').decode(locale.getpreferredencoding())
 				if month_year != prev_month_year:
 					if prev_month_year != '':
 						f.write('</table>')
 					f.write('<a name="%s"></a>' % (month_amap[month_year]))
-					f.write("<h2>%s</h2>\n" % (month_year))
+					f.write("<h2>%s</h2>\n" % (month_year.encode('utf8')))
 					f.write('<table class="month_convos">')
 				f.write('<tr>')
-				f.write('<td><b><span class="msg_date">%s</span></td><td><span class="msg_sender_%s">%s %s</span></b></td><td>%s' % (dt.strftime('%m/%d/%y %I:%M:%S%p'), msg.type, '<<' if msg.type == "1" else '>>', address if msg.type == "1" else carrier_number, msg.text.encode('utf8')))
+				f.write('<td><b><span class="msg_date">%s</span></td><td><span class="msg_sender_%s">%s %s</span></b></td><td>%s' % (dt.strftime('%m/%d/%y %I:%M:%S%p'), msg.type_, '<<' if msg.type_ == "1" else '>>', address if msg.type_ == "1" else carrier_number, msg.text.encode('utf8')))
 				if isinstance(msg, MMSMsg):
 					f.write('<br />')
 					for image in msg.images:
@@ -216,6 +220,7 @@ def main():
 	messages = 0
 	conversations = {}
 	users = {}
+	locale.setlocale(locale.LC_ALL, '')
 	for input in args.input:
 		# Open the input file
 		from lxml.etree import XMLParser, parse
